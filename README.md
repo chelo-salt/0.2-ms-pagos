@@ -1,83 +1,89 @@
-# 🏛️ Microservicio de Pagos - Municipalidad (ms-pagos)
+# 🏟️ Sistema de Gestión de Canchas Deportivas Municipales
 
-Este microservicio forma parte del ecosistema distribuido para la gestión de recintos deportivos de la Municipalidad. Su función principal es procesar y persistir los pagos asociados a los arriendos de canchas, integrándose de manera síncrona con el microservicio externo de gestión de recintos para validar la existencia y obtener la información de las canchas.
-
-## 🚀 Tecnologías Utilizadas
-
-* **Java 24** & **Spring Boot 4.0.6**
-* **Spring Data JPA** (Persistencia de datos)
-* **Spring WebFlux (WebClient)** (Comunicación asíncrona/síncrona entre microservicios)
-* **MySQL 8.0** (Base de datos relacional de almacenamiento aislado)
-* **Flyway** (Control de versiones y migraciones de la Base de Datos)
-* **Docker & Docker Compose** (Contenedorización del entorno de base de datos)
-* **Lombok** (Reducción de código repetitivo/boilerplate)
-* **Jakarta Validation** (Validación de reglas de negocio en la capa REST)
+Este proyecto es una plataforma robusta basada en una **Arquitectura de Microservicios** diseñada para digitalizar, administrar y automatizar el arriendo de complejos deportivos de la municipalidad. El sistema está construido utilizando **Java 21**, **Spring Boot 4**, **Spring Cloud** y contenedores **Docker**.
 
 ---
 
-## 🏗️ Arquitectura de Paquetes (Patrón DTO)
+## 📐 Arquitectura del Sistema
 
-El proyecto sigue una arquitectura limpia estructurada bajo las pautas académicas del estándar industrial:
+El ecosistema está pensado para segmentar las responsabilidades del negocio en componentes autónomos (Loose Coupling), garantizando alta disponibilidad, escalabilidad y mantenimiento independiente.
 
-```text
-cl.municipalidad.pagos
-├── client        # Clientes HTTP (Consumo de microservicios externos mediante WebClient)
-├── config        # Configuraciones de Beans del contexto (WebClientConfig)
-├── controller    # Endpoints REST expuestos al cliente (Postman/Frontend)
-├── dto           # Objetos de Transferencia de Datos (Data Transfer Objects)
-│   ├── request   # Estructuras de datos de entrada válidas
-│   └── response  # Estructuras de datos de salida limpias
-├── exception     # Manejo global y centralizado de excepciones del sistema
-├── model         # Entidades de persistencia (Mapeo de Tablas MySQL)
-└── repository    # Interfaces de acceso a datos de Spring Data JPA
-⚙️ Configuración del Entorno y Puertos
-Para evitar colisiones en el ecosistema de la solución, los servicios se distribuyen de la siguiente manera:
+### Mapa de Comunicación entre Servicios actual:
+Actualmente, los servicios se comunican de forma sincrónica e interna mediante **Spring WebFlux (WebClient)**, evitando exponer endpoints sensibles al exterior y optimizando el tiempo de respuesta.
 
-ms-auth (Puerto 8080)
+Markdown
+---
 
-ms-canchas (Puerto 8081 - Consumido externamente por este desarrollo)
+## 🚦 Estado de los Microservicios (3 / 10)
 
-ms-pagos (Puerto 8082 - Este Microservicio)
+A continuación se detallan los módulos desarrollados hasta la fecha y la planificación de la infraestructura:
 
-🛠️ Instrucciones de Despliegue de Inmediato
-Sigue estos pasos para clonar y levantar el entorno completo en tu máquina local:
+| Microservicio | Puerto | Base de Datos (Docker) | Estado | Descripción |
+| :--- | :---: | :---: | :---: | :--- |
+| **`ms-auth`** | `8080` | `db_auth` (MySQL) | 🟢 Operativo | Autenticación, JWT, roles y seguridad. |
+| **`ms-canchas`** | `8081` | `db_canchas` (MySQL) | 🟢 Operativo | Gestión de complejos, catálogo y disponibilidad. |
+| **`ms-pagos`** | `8082` | `db_pagos` (MySQL) | 🟢 Operativo | Registro de transacciones financieras y auditorías. |
+| *Módulo 4* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 5* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 6* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 7* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 8* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 9* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
+| *Módulo 10* | *TBD* | *TBD* | 🟡 Pendiente | Próximamente... |
 
-1. Levantar el Contenedor de Base de Datos (Docker)
-El servicio cuenta con un contenedor MySQL aislado corriendo en el puerto externo 3307 para no chocar con instancias previas de otros servicios locales. Ejecuta en la raíz del proyecto:
+---
 
-Bash
-docker compose up -d
-2. Compilar e Iniciar la Aplicación (Spring Boot)
-Una vez que el contenedor esté saludable, arranca el servidor utilizando el wrapper nativo de Maven.
+## 🔄 Flujo de Integración: Canchas ➡️ Pagos
 
-En PowerShell (Windows):
+Cuando un usuario realiza un pago exitoso, el `ms-pagos` intercepta la solicitud y realiza el siguiente flujo automatizado:
 
-PowerShell
-.\mvnw.cmd spring-boot:run
-En Bash (Linux/Mac/Git Bash):
+1. **Validación Remota:** Llama al `ms-canchas` (`GET /api/v1/cancha/{id}`) vía WebClient.
+2. **Auditoría de Datos:** Si la cancha existe, extrae dinámicamente su nombre e información real.
+3. **Persistencia:** Guarda el registro consolidado en la tabla `pagos` de la base de datos `db_pagos` en Docker.
+4. **Respuesta Estructurada:** Retorna un DTO limpio al cliente indicando el éxito de la operación.
 
-Bash
-./mvnw spring-boot:run
-💡 Migración Automática: Al levantar, Flyway interceptará la base de datos db_pagos e inyectará el archivo de migración V1__crear_tabla_pagos.sql para construir las tablas de forma nativa sin intervención manual.
+---
 
-📬 Endpoints y Pruebas en Postman
-1. Registrar Pago de Arriendo
-Método: POST
+## 💻 Guía de Uso Local y Pruebas
 
-URL: http://localhost:8082/api/v1/pagos
+### 1. Requisitos Previos
+* Java 21 LTS
+* Docker & Docker Compose
+* Postman (para pruebas de endpoints)
 
-Headers: Content-Type: application/json
+### 2. Infraestructura de Base de Datos (Docker)
+Las bases de datos corren en contenedores independientes mapeados externamente. Para conectarse mediante un cliente SQL (como *Database Client* en VS Code), usar las credenciales del proyecto apuntando al puerto:
+* **Host:** `localhost`
+* **Puerto:** `3307` (Módulo Pagos)
 
-Cuerpo (JSON):
+### 3. Endpoint de Prueba (Postman)
+* **Método:** `POST`
+* **URL:** `http://localhost:8082/api/v1/pagos`
+* **Headers:** `Content-Type: application/json`
+
+**Payload de entrada (JSON):**
+```json
+{
+    "idCancha": 1,
+    "montoPagado": 30000,
+    "estadoPago": "PENDIENTE"
+}
+Respuesta esperada (200 OK):
 
 JSON
 {
-    "montoPagado": 15000,
-    "estadoPago": "APROBADO",
-    "idCancha": 1
+    "idPago": 1,
+    "fechaPago": "2026-05-16",
+    "montoPagado": 30000,
+    "estadoPago": "PAGADO"
 }
-🛡️ Validaciones del Sistema Integradas:
-Monto Mínimo: Si el montoPagado es menor a $10.000, el sistema rebotará un error 400 Bad Request controlado.
+🛠️ Stack Tecnológico
+Core: Java 21, Spring Boot 4.0.6
 
-IDs Sospechosos: Si el idCancha supera el valor de 1.000.000, el servicio lanzará una excepción controlada de negocio por seguridad.
+Data: Spring Data JPA, Hibernate 7
 
+Reactividad/Red: Spring WebFlux (WebClient)
+
+DevOps: Docker, Docker Compose, MySQL Images
+
+Productividad: Lombok, VS Code Extensions

@@ -5,6 +5,7 @@ import cl.municipalidad.pagos.dto.response.DtoPagosResponse;
 import cl.municipalidad.pagos.dto.response.CanchaClientResponse;
 import cl.municipalidad.pagos.model.PagosModel;
 import cl.municipalidad.pagos.repository.PagosRepository;
+import cl.municipalidad.pagos.client.ReservasClient; // 1. IMPORTAMOS EL NUEVO CLIENTE
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,15 @@ public class PagosService {
 
     private final PagosRepository pagosRepository;
     
+    // 2. INYECTAMOS TU NUEVO CLIENTE DE RESERVAS
+    private final ReservasClient reservasClient;
+    
     @Qualifier("webClientCancha")
     private final WebClient webClientCancha;
 
     /**
      * Procesa y guarda el pago del arriendo deportivo, validando la cancha externamente
+     * y confirmando de forma automática el estado en el módulo de reservas.
      */
     public DtoPagosResponse guardarPagos(DtoPagosRequest request) {
         
@@ -33,11 +38,7 @@ public class PagosService {
         // 2. Creamos el modelo usando los setters EXACTOS de tu PagosModel
         PagosModel nuevoPago = new PagosModel();
         nuevoPago.setIdCancha(cancha.getIdCancha());
-        
-        // 🔍 REVISIÓN AQUÍ: Si 'getMonto()' te vuelve a marcar rojo, bórralo y usa Ctrl + Espacio 
-        // después de 'request.' para ver si tu request usa getMontoPagado() u otro nombre.
         nuevoPago.setMontoPagado(request.getMontoPagado()); 
-        
         nuevoPago.setFechaPago(LocalDate.now());
         nuevoPago.setEstadoPago("PAGADO");
         nuevoPago.setNombreCancha(cancha.getNombre());
@@ -45,7 +46,14 @@ public class PagosService {
         // Guardamos el registro en la base de datos de pagos mediante el repositorio JPA
         PagosModel pagoGuardado = pagosRepository.save(nuevoPago);
 
-        // 3. Construimos la respuesta usando los campos reales de tu DtoPagosResponse
+        // 🚀 3. NUEVO PASO: Si el request trae un ID de reserva, notificamos a ms-reservas
+        // Usamos .block() al final para esperar que el microservicio de reservas responda
+        if (request.getIdReserva() != null) {
+            reservasClient.confirmarReserva(request.getIdReserva().longValue()).block();
+            System.out.println("📬 ms-pagos notificó con éxito el pago de la reserva ID: " + request.getIdReserva());
+        }
+
+        // 4. Construimos la respuesta usando los campos reales de tu DtoPagosResponse
         DtoPagosResponse response = new DtoPagosResponse();
         response.setIdPago(pagoGuardado.getId()); 
         response.setFechaPago(pagoGuardado.getFechaPago());

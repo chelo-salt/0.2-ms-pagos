@@ -21,4 +21,7 @@ public class DtoPagosRequest {
 
     @Positive(message = "El ID de la cancha debe ser un número positivo")
     private Integer idCancha; // ID de la cancha municipal que se pretende arrendar
+
+    // 🚀 NUEVO CAMPO: Permite vincular el pago a una orden de reserva existente
+    private Integer idReserva; 
 }

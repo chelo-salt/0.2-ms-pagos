@@ -1,59 +1,77 @@
 package cl.municipalidad.pagos.service;
 
+import cl.municipalidad.pagos.client.CanchaClient;
+import cl.municipalidad.pagos.client.ReservasClient;
 import cl.municipalidad.pagos.dto.request.DtoPagosRequest;
 import cl.municipalidad.pagos.dto.response.DtoPagosResponse;
 import cl.municipalidad.pagos.dto.response.CanchaClientResponse;
+import cl.municipalidad.pagos.exception.ResourceNotFoundException;
 import cl.municipalidad.pagos.model.PagosModel;
 import cl.municipalidad.pagos.repository.PagosRepository;
-import cl.municipalidad.pagos.client.ReservasClient; // 1. IMPORTAMOS EL NUEVO CLIENTE
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
+import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDate;
 
+/**
+ * Servicio de negocio encargado de procesar la lógica de transacciones financieras,
+ * coordinando validaciones distribuidas con ms-canchas y ms-reservas.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PagosService {
 
     private final PagosRepository pagosRepository;
-    
-    // 2. INYECTAMOS TU NUEVO CLIENTE DE RESERVAS
-    private final ReservasClient reservasClient;
-    
-    @Qualifier("webClientCancha")
-    private final WebClient webClientCancha;
+    private final CanchaClient canchaClient;     
+    private final ReservasClient reservasClient; 
 
     /**
      * Procesa y guarda el pago del arriendo deportivo, validando la cancha externamente
      * y confirmando de forma automática el estado en el módulo de reservas.
+     * * @param request Datos de la transacción comercial enviados desde el cliente.
+     * @return DTO con la respuesta estructurada del pago generado.
      */
     public DtoPagosResponse guardarPagos(DtoPagosRequest request) {
         
-        // 1. Llamamos al microservicio de canchas (puerto 8081) usando el ID que viene en el request
-        CanchaClientResponse cancha = obtenerCanchaDesdeModuloCanchas(request.getIdCancha());
-        
-        // 2. Creamos el modelo usando los setters EXACTOS de tu PagosModel
+        Long canchaId = request.getIdCancha(); 
+        CanchaClientResponse cancha;
+
+        // 🔄 SOLUCIÓN: Bloque try-catch limpio que no requiere imports externos de WebClient
+        try {
+            cancha = canchaClient.obtenerCanchaPorId(canchaId).block();
+            
+            if (cancha == null) {
+                throw new ResourceNotFoundException("El microservicio de canchas devolvió una respuesta vacía para el ID: " + canchaId);
+            }
+        } catch (Exception error) {
+            log.error("❌ Fallo al conectar con ms-canchas para validar ID {}: {}", canchaId, error.getMessage());
+            throw new ResourceNotFoundException("La cancha con ID " + canchaId + " no existe en el sistema municipal u ocurrió un error en el servicio remoto.");
+        }
+
+        // 2. Mapeamos y poblamos los campos lógicos de nuestra entidad
         PagosModel nuevoPago = new PagosModel();
-        nuevoPago.setIdCancha(cancha.getIdCancha());
+        nuevoPago.setIdCancha(cancha.getIdCancha()); 
         nuevoPago.setMontoPagado(request.getMontoPagado()); 
         nuevoPago.setFechaPago(LocalDate.now());
         nuevoPago.setEstadoPago("PAGADO");
-        nuevoPago.setNombreCancha(cancha.getNombre());
+        nuevoPago.setNombreCancha(cancha.getNombre()); 
         
-        // Guardamos el registro en la base de datos de pagos mediante el repositorio JPA
+        // Guardamos en la base de datos de pagos
         PagosModel pagoGuardado = pagosRepository.save(nuevoPago);
 
-        // 🚀 3. NUEVO PASO: Si el request trae un ID de reserva, notificamos a ms-reservas
-        // Usamos .block() al final para esperar que el microservicio de reservas responda
+        // 🚀 3. Notificación al módulo de reservas (ms-reservas)
         if (request.getIdReserva() != null) {
-            reservasClient.confirmarReserva(request.getIdReserva().longValue()).block();
-            System.out.println("📬 ms-pagos notificó con éxito el pago de la reserva ID: " + request.getIdReserva());
+            try {
+                reservasClient.confirmarReserva(request.getIdReserva()).block();
+                log.info("📬 ms-pagos notificó con éxito el pago de la reserva ID: {}", request.getIdReserva());
+            } catch (Exception error) {
+                log.error("⚠️ No se pudo notificar la confirmación a ms-reservas para el ID: {}. Detalle: {}", request.getIdReserva(), error.getMessage());
+            }
         }
 
-        // 4. Construimos la respuesta usando los campos reales de tu DtoPagosResponse
+        // 4. Construimos el DTO de salida
         DtoPagosResponse response = new DtoPagosResponse();
         response.setIdPago(pagoGuardado.getId()); 
         response.setFechaPago(pagoGuardado.getFechaPago());
@@ -61,18 +79,5 @@ public class PagosService {
         response.setEstadoPago(pagoGuardado.getEstadoPago());
 
         return response;
-    }
-
-    /**
-     * Consulta de forma reactiva los datos de una cancha en el ms-canchas
-     */
-    public CanchaClientResponse obtenerCanchaDesdeModuloCanchas(Integer canchaId) {
-        return this.webClientCancha.get()
-                .uri("/api/v1/cancha/{id}", canchaId)
-                .retrieve()
-                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                        clientResponse -> Mono.error(new RuntimeException("La cancha con ID " + canchaId + " no existe en el sistema municipal u ocurrió un error remoto.")))
-                .bodyToMono(CanchaClientResponse.class)
-                .block();
     }
 }

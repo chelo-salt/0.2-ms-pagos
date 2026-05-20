@@ -1,22 +1,30 @@
 package cl.municipalidad.pagos.client;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import cl.municipalidad.pagos.dto.response.DtoCanchaResponse;
+import cl.municipalidad.pagos.dto.response.CanchaClientResponse; // 👈 IMPORTANTE: Usar el DTO correcto
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
+/**
+ * Cliente HTTP reactivo encargado de comunicarse con ms-canchas.
+ * Consume los endpoints remotos para validar la existencia y obtener meta-datos de los recintos.
+ */
 @Component
+@RequiredArgsConstructor
 public class CanchaClient {
 
-    @Autowired
-    private WebClient webClientCancha; // Inyecta el Bean que configuramos en la otra clase
+    private final WebClient webClientCancha; 
 
-    // Método encargado de ir a buscar la cancha al microservicio externo por su ID
-    public Mono<DtoCanchaResponse> obtenerCanchaPorId(Integer idCancha) {
+    /**
+     * Consulta al microservicio de canchas la información de un complejo deportivo por su ID.
+     * @param idCancha Identificador único de la cancha (Long)
+     * @return Un contenedor reactivo Mono con los datos mapeados en CanchaClientResponse
+     */
+    public Mono<CanchaClientResponse> obtenerCanchaPorId(Long idCancha) { // 🔄 CORREGIDO: Cambiado el retorno genérico a CanchaClientResponse
         return webClientCancha.get()
-                .uri("/api/v1/canchas/{id}", idCancha) // Ruta del endpoint externo
+                .uri("/api/v1/canchas/cancha/{id}", idCancha)
                 .retrieve()
-                .bodyToMono(DtoCanchaResponse.class); // Mapea la respuesta JSON automáticamente al DTO
+                .bodyToMono(CanchaClientResponse.class); // 🔄 CORREGIDO: Mapeo de clase unificado
     }
 }

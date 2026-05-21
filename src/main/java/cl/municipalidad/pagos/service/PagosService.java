@@ -30,15 +30,12 @@ public class PagosService {
     /**
      * Procesa y guarda el pago del arriendo deportivo, validando la cancha externamente
      * y confirmando de forma automática el estado en el módulo de reservas.
-     * * @param request Datos de la transacción comercial enviados desde el cliente.
-     * @return DTO con la respuesta estructurada del pago generado.
      */
     public DtoPagosResponse guardarPagos(DtoPagosRequest request) {
         
         Long canchaId = request.getIdCancha(); 
         CanchaClientResponse cancha;
 
-        // 🔄 SOLUCIÓN: Bloque try-catch limpio que no requiere imports externos de WebClient
         try {
             cancha = canchaClient.obtenerCanchaPorId(canchaId).block();
             
@@ -79,5 +76,13 @@ public class PagosService {
         response.setEstadoPago(pagoGuardado.getEstadoPago());
 
         return response;
+    }
+
+    /**
+     * 💰 Lógica analítica: Calcula la suma total de dinero ingresado en el rango de fechas.
+     */
+    public Double calcularRecaudacionPorRango(LocalDate inicio, LocalDate fin) {
+        Double total = pagosRepository.sumarRecaudacionPorRango(inicio, fin);
+        return total != null ? total : 0.0;
     }
 }

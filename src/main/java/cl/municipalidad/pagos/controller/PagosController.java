@@ -27,18 +27,13 @@ public class PagosController {
 
     private final PagosService pagosService;
 
-    /**
-     * Registra y procesa un nuevo pago por el arriendo de una cancha municipal.
-     * @param request DTO con los datos del cobro, monto e infraestructura deportiva.
-     * @return El comprobante del pago emitido con estado 201 Created.
-     */
     @PostMapping
     public ResponseEntity<DtoPagosResponse> guardarPago(@Valid @RequestBody DtoPagosRequest request) {
         DtoPagosResponse response = pagosService.guardarPagos(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 💰 ENDPOINT ANALÍTICO: Suma de la recaudación monetaria por fechas
+
     @GetMapping("/analitica/recaudacion")
     public ResponseEntity<Double> obtenerRecaudacion(
             @RequestParam("fechaInicio") LocalDate fechaInicio,

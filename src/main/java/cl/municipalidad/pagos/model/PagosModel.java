@@ -11,10 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Entidad de persistencia que mapea la tabla 'pagos' en la base de datos distribuida 'mysql-pagos'.
- * Guarda la trazabilidad de los arriendos e incorpora datos enriquecidos asíncronamente.
- */
+
 @Entity
 @Table(name = "pagos")
 @Data
@@ -31,14 +28,14 @@ public class PagosModel {
     private Integer montoPagado;
 
     @Column(name = "estado_pago", nullable = false)
-    private String estadoPago; // Ej: "PENDIENTE", "PAGADO", "RECHAZADO"
+    private String estadoPago; 
 
-    // 🔄 CORREGIDO: Cambiado de Integer a Long para mantener estricta consistencia con el idCancha de ms-canchas
+   
     @Column(name = "id_cancha", nullable = false)
     private Long idCancha; 
 
     @Column(name = "nombre_cancha", nullable = false)
-    private String nombreCancha; // Nombre descriptivo obtenido mediante WebClient desde ms-canchas
+    private String nombreCancha;
 
     @Column(name = "fecha_pago", nullable = false)
     private LocalDate fechaPago;

@@ -1,32 +1,27 @@
 package cl.municipalidad.pagos.client;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestClient;
 
-/**
- * Cliente HTTP reactivo encargado de comunicarse con ms-reservas.
- * Permite cambiar estados de reservas (confirmar/cancelar) tras procesar transacciones.
- */
 @Component
-@RequiredArgsConstructor // 🔄 CORREGIDO: Inyección limpia por constructor en vez de @Autowired en campo
 public class ReservasClient {
 
-    // Spring inyectará el WebClient configurado. 
-    // Nota: Si en el futuro usas un WebClient exclusivo para reservas, aquí usarías su Bean.
-    private final WebClient webClientCancha; 
+    private final RestClient restClientReservas;
 
-    /**
-     * Envía una señal vía PUT al microservicio de reservas para confirmar un bloque horario.
-     * @param idReserva Identificador único de la reserva (Estandarizado a Long)
-     * @return Contenedor reactivo vacío (Void) que confirma el término de la operación remota.
-     */
-    public Mono<Void> confirmarReserva(Long idReserva) { // 🔄 CORREGIDO: Tipado unificado a Long
-        return webClientCancha.put()
-                // Asumimos la ruta REST estándar para actualización de estados
-                .uri("/api/v1/reservas/reserva/{id}/confirmar", idReserva) 
+    public ReservasClient(@Qualifier("restClientReservas") RestClient restClientReservas) {
+        this.restClientReservas = restClientReservas;
+    }
+
+
+    public void confirmarReserva(Long idReserva) {
+        restClientReservas.put()
+                .uri("/api/v1/reservas/{id}/estado?nuevoEstado=CONFIRMADA", idReserva)
                 .retrieve()
-                .bodyToMono(Void.class); 
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    throw new RuntimeException("No se pudo confirmar la reserva ID " + idReserva + " en ms-reservas. Código de respuesta: " + response.getStatusCode());
+                })
+                .toBodilessEntity();
     }
 }

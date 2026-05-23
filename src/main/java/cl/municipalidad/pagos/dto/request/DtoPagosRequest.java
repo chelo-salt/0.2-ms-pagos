@@ -8,10 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO de entrada que captura e inspecciona los datos enviados desde Postman
- * al momento de registrar una transacción comercial de arriendo.
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,13 +20,13 @@ public class DtoPagosRequest {
     private Integer montoPagado;
 
     @NotBlank(message = "El estado del pago no puede estar vacío")
-    private String estadoPago; // Ej: "PENDIENTE" o "PAGADO"
+    private String estadoPago; 
 
-    // 🔄 CORREGIDO: Cambiado de Integer a Long para mantener estricta consistencia en las APIs del ecosistema
+   
     @NotNull(message = "El ID de la cancha es obligatorio")
     @Positive(message = "El ID de la cancha debe ser un número positivo")
     private Long idCancha; 
 
-    // 🔄 CORREGIDO: Cambiado de Integer a Long para enganchar de forma nativa con ms-reservas
+    
     private Long idReserva; 
 }

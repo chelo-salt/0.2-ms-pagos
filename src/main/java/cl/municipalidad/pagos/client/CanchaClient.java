@@ -1,30 +1,33 @@
 package cl.municipalidad.pagos.client;
 
+import cl.municipalidad.pagos.dto.response.CanchaClientResponse;
+import cl.municipalidad.pagos.exception.ResourceNotFoundException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import cl.municipalidad.pagos.dto.response.CanchaClientResponse; // 👈 IMPORTANTE: Usar el DTO correcto
-import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestClient;
 
-/**
- * Cliente HTTP reactivo encargado de comunicarse con ms-canchas.
- * Consume los endpoints remotos para validar la existencia y obtener meta-datos de los recintos.
- */
 @Component
-@RequiredArgsConstructor
 public class CanchaClient {
 
-    private final WebClient webClientCancha; 
+    private final RestClient restClientCancha;
 
-    /**
-     * Consulta al microservicio de canchas la información de un complejo deportivo por su ID.
-     * @param idCancha Identificador único de la cancha (Long)
-     * @return Un contenedor reactivo Mono con los datos mapeados en CanchaClientResponse
-     */
-    public Mono<CanchaClientResponse> obtenerCanchaPorId(Long idCancha) { // 🔄 CORREGIDO: Cambiado el retorno genérico a CanchaClientResponse
-        return webClientCancha.get()
-                .uri("/api/v1/canchas/cancha/{id}", idCancha)
+    public CanchaClient(@Qualifier("restClientCancha") RestClient restClientCancha) {
+        this.restClientCancha = restClientCancha;
+    }
+
+    public CanchaClientResponse obtenerCanchaPorId(Long idCancha) {
+        return restClientCancha.get()
+                .uri("/api/v1/canchas/{id}", idCancha)
                 .retrieve()
-                .bodyToMono(CanchaClientResponse.class); // 🔄 CORREGIDO: Mapeo de clase unificado
+               
+                .onStatus(HttpStatusCode::is4xxClientError, (request, response) -> {
+                    int statusCode = response.getStatusCode().value();
+                    if (statusCode == 401 || statusCode == 403) {
+                        throw new RuntimeException("ms-canchas rechazó a ms-pagos por seguridad (Código " + statusCode + "). El token no se está enviando.");
+                    }
+                    throw new ResourceNotFoundException("La cancha con ID " + idCancha + " no fue encontrada en ms-canchas (Código " + statusCode + ").");
+                })
+                .body(CanchaClientResponse.class);
     }
 }

@@ -14,10 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDate;
 
-/**
- * Servicio de negocio encargado de procesar la lógica de transacciones financieras,
- * coordinando validaciones distribuidas con ms-canchas y ms-reservas.
- */
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -27,27 +24,24 @@ public class PagosService {
     private final CanchaClient canchaClient;     
     private final ReservasClient reservasClient; 
 
-    /**
-     * Procesa y guarda el pago del arriendo deportivo, validando la cancha externamente
-     * y confirmando de forma automática el estado en el módulo de reservas.
-     */
+
     public DtoPagosResponse guardarPagos(DtoPagosRequest request) {
         
         Long canchaId = request.getIdCancha(); 
         CanchaClientResponse cancha;
 
         try {
-            cancha = canchaClient.obtenerCanchaPorId(canchaId).block();
-            
-            if (cancha == null) {
-                throw new ResourceNotFoundException("El microservicio de canchas devolvió una respuesta vacía para el ID: " + canchaId);
-            }
-        } catch (Exception error) {
-            log.error("❌ Fallo al conectar con ms-canchas para validar ID {}: {}", canchaId, error.getMessage());
-            throw new ResourceNotFoundException("La cancha con ID " + canchaId + " no existe en el sistema municipal u ocurrió un error en el servicio remoto.");
+            cancha = canchaClient.obtenerCanchaPorId(canchaId);
+            log.info("Se validó la existencia de la cancha: {}", cancha.getNombre());
+        } catch (ResourceNotFoundException e) {
+            log.error("[Error]: La cancha ID {} no existe en ms-canchas.", canchaId);
+            throw e; 
+        } catch (Exception e) {
+            log.error("[Error]: {}", e.getMessage());
+            throw new RuntimeException("No se pudo verificar la cancha debido a un fallo en el servicio externo.");
         }
 
-        // 2. Mapeamos y poblamos los campos lógicos de nuestra entidad
+
         PagosModel nuevoPago = new PagosModel();
         nuevoPago.setIdCancha(cancha.getIdCancha()); 
         nuevoPago.setMontoPagado(request.getMontoPagado()); 
@@ -55,20 +49,18 @@ public class PagosService {
         nuevoPago.setEstadoPago("PAGADO");
         nuevoPago.setNombreCancha(cancha.getNombre()); 
         
-        // Guardamos en la base de datos de pagos
+
         PagosModel pagoGuardado = pagosRepository.save(nuevoPago);
 
-        // 🚀 3. Notificación al módulo de reservas (ms-reservas)
         if (request.getIdReserva() != null) {
             try {
-                reservasClient.confirmarReserva(request.getIdReserva()).block();
-                log.info("📬 ms-pagos notificó con éxito el pago de la reserva ID: {}", request.getIdReserva());
+                reservasClient.confirmarReserva(request.getIdReserva());
+                log.info("Se notificó con éxito el pago de la reserva ID: {}", request.getIdReserva());
             } catch (Exception error) {
-                log.error("⚠️ No se pudo notificar la confirmación a ms-reservas para el ID: {}. Detalle: {}", request.getIdReserva(), error.getMessage());
+                log.error("[Error] No se pudo notificar la confirmación a ms-reservas para el ID: {}. Detalle: {}", request.getIdReserva(), error.getMessage());
             }
         }
 
-        // 4. Construimos el DTO de salida
         DtoPagosResponse response = new DtoPagosResponse();
         response.setIdPago(pagoGuardado.getId()); 
         response.setFechaPago(pagoGuardado.getFechaPago());
@@ -78,9 +70,6 @@ public class PagosService {
         return response;
     }
 
-    /**
-     * 💰 Lógica analítica: Calcula la suma total de dinero ingresado en el rango de fechas.
-     */
     public Double calcularRecaudacionPorRango(LocalDate inicio, LocalDate fin) {
         Double total = pagosRepository.sumarRecaudacionPorRango(inicio, fin);
         return total != null ? total : 0.0;

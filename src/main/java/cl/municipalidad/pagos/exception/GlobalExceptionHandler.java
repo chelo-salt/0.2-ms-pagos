@@ -17,7 +17,6 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
@@ -35,7 +34,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<DtoApiError> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         
-       
         DtoApiError error = new DtoApiError();
         error.setCodigoEstado(HttpStatus.NOT_FOUND.value());
         error.setMensaje(ex.getMessage());
@@ -47,14 +45,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<DtoApiError> handleRuntime(RuntimeException ex, HttpServletRequest request) {
-        
 
         DtoApiError error = new DtoApiError();
-        error.setCodigoEstado(HttpStatus.CONFLICT.value());
+        error.setCodigoEstado(HttpStatus.INTERNAL_SERVER_ERROR.value());
         error.setMensaje(ex.getMessage());
         error.setDetalle("Fallo interno del servidor en: " + request.getRequestURI());
         error.setFechaHora(LocalDateTime.now());
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    } 
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<DtoApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        DtoApiError error = new DtoApiError();
+        error.setCodigoEstado(HttpStatus.BAD_REQUEST.value());
+        error.setMensaje(ex.getMessage());
+        error.setDetalle("Error en los parámetros de la solicitud en: " + request.getRequestURI());
+        error.setFechaHora(LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
 }

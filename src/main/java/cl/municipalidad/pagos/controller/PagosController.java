@@ -1,5 +1,7 @@
 package cl.municipalidad.pagos.controller;
 
+import java.time.LocalDate;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +16,6 @@ import cl.municipalidad.pagos.dto.response.DtoPagosResponse;
 import cl.municipalidad.pagos.service.PagosService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import java.time.LocalDate;
 
 /**
  * Controlador REST que expone los endpoints para el procesamiento financiero del sistema.

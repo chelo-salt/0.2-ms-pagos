@@ -1,7 +1,6 @@
 package cl.municipalidad.pagos.dto.request;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -19,7 +18,6 @@ public class DtoPagosRequest {
     @Min(value = 10000, message = "El monto pagado debe ser al menos 10000")
     private Integer montoPagado;
 
-    @NotBlank(message = "El estado del pago no puede estar vacío")
     private String estadoPago; 
 
    

@@ -1,7 +1,9 @@
 package cl.municipalidad.pagos.dto.response;
 
 import java.time.LocalDate;
-import com.fasterxml.jackson.annotation.JsonFormat; // 👈 IMPORTADO
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +19,6 @@ public class DtoPagosResponse {
     
     @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate fechaPago;
-
     private Integer montoPagado;
     private String estadoPago;
 }

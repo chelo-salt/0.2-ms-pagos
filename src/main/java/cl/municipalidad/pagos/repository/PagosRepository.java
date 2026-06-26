@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import cl.municipalidad.pagos.model.PagosModel;
 
-
 @Repository 
 public interface PagosRepository extends JpaRepository<PagosModel, Long> {
     @Query("SELECT SUM(p.montoPagado) FROM PagosModel p " +

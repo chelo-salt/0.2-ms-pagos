@@ -2,6 +2,7 @@ package cl.municipalidad.pagos.controller;
 
 import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import cl.municipalidad.pagos.dto.request.DtoPagosRequest;
 import cl.municipalidad.pagos.dto.response.DtoPagosResponse;
 import cl.municipalidad.pagos.service.PagosService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,10 +25,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Controlador REST que expone los endpoints para el procesamiento financiero del sistema.
- * Mapeado en perfecta sintonía con los predicados nativos de redirección del ms-gateway.
- */
 @RestController
 @RequestMapping("/api/v1/pagos/pago")
 @RequiredArgsConstructor
@@ -36,7 +34,7 @@ public class PagosController {
     private final PagosService pagosService;
 
     @PostMapping
-     @Operation(
+    @Operation(
         summary = "Registrar y procesar un nuevo pago",
         description = "Valida y persiste una transacción financiera asociada a una reserva de cancha en la base de datos MySQL."
     )
@@ -51,6 +49,11 @@ public class PagosController {
         content = @Content(schema = @Schema(implementation = DtoApiError.class))
     )
     @ApiResponse(
+        responseCode = "401", 
+        description = "No autorizado. Token JWT inválido o expirado.",
+        content = @Content(schema = @Schema(implementation = DtoApiError.class))
+    )
+    @ApiResponse(
         responseCode = "500", 
         description = "Error interno del servidor al procesar la transacción financiera.",
         content = @Content(schema = @Schema(implementation = DtoApiError.class))
@@ -60,7 +63,6 @@ public class PagosController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
     @GetMapping("/analitica/recaudacion")
     @Operation(
         summary = "Obtener el total de recaudación por rango de fechas",
@@ -69,11 +71,16 @@ public class PagosController {
     @ApiResponse(
         responseCode = "200", 
         description = "Cálculo de recaudación obtenido con éxito.",
-        content = @Content(schema = @Schema(implementation = Double.class))
+        content = @Content(schema = @Schema(implementation = Double.class, example = "750000.0"))
     )
     @ApiResponse(
         responseCode = "400", 
         description = "Parámetros de fecha inválidos o mal formateados.",
+        content = @Content(schema = @Schema(implementation = DtoApiError.class))
+    )
+    @ApiResponse(
+        responseCode = "401", 
+        description = "No autorizado. Token JWT faltante.",
         content = @Content(schema = @Schema(implementation = DtoApiError.class))
     )
     @ApiResponse(
@@ -82,8 +89,11 @@ public class PagosController {
         content = @Content(schema = @Schema(implementation = DtoApiError.class))
     )
     public ResponseEntity<Double> obtenerRecaudacion(
-            @RequestParam("fechaInicio") LocalDate fechaInicio,
-            @RequestParam("fechaFin") LocalDate fechaFin) {
+            @Parameter(description = "Fecha inicial (ISO: YYYY-MM-DD)", example = "2026-06-01")
+            @RequestParam("fechaInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            
+            @Parameter(description = "Fecha final (ISO: YYYY-MM-DD)", example = "2026-06-30")
+            @RequestParam("fechaFin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         
         Double total = pagosService.calcularRecaudacionPorRango(fechaInicio, fechaFin);
         return ResponseEntity.ok(total);

@@ -1,5 +1,23 @@
 package cl.municipalidad.pagos.service;
 
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+
 import cl.municipalidad.pagos.client.CanchaClient;
 import cl.municipalidad.pagos.client.ReservasClient;
 import cl.municipalidad.pagos.dto.request.DtoPagosRequest;
@@ -8,21 +26,6 @@ import cl.municipalidad.pagos.dto.response.DtoPagosResponse;
 import cl.municipalidad.pagos.exception.ResourceNotFoundException;
 import cl.municipalidad.pagos.model.PagosModel;
 import cl.municipalidad.pagos.repository.PagosRepository;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.client.HttpClientErrorException;
-
-import java.time.LocalDate;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PagosServiceTest {
@@ -39,7 +42,6 @@ class PagosServiceTest {
     @InjectMocks
     private PagosService pagosService;
 
-    // --- TEST: PROCESAMIENTO DE PAGO ---
     @Test
     void guardarPagos_CaminoFeliz_DebeProcesarPagoYConfirmarReserva() {
         DtoPagosRequest request = new DtoPagosRequest(15000, "PAGADO", 1L, 5L);
@@ -58,6 +60,7 @@ class PagosServiceTest {
         when(pagosRepository.save(any(PagosModel.class))).thenReturn(mockPagoGuardado);
         doNothing().when(reservasClient).confirmarReserva(5L);
 
+
         DtoPagosResponse response = pagosService.guardarPagos(request);
 
         assertThat(response).isNotNull();
@@ -66,7 +69,6 @@ class PagosServiceTest {
         verify(reservasClient, times(1)).confirmarReserva(5L);
     }
 
-    // --- TEST: ERROR CUANDO LA CANCHA EXTERNA NO EXISTE ---
     @Test
     void guardarPagos_CanchaNoExiste_DebeLanzarResourceNotFoundException() {
         DtoPagosRequest request = new DtoPagosRequest(15000, "PAGADO", 999L, 5L);
